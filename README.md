@@ -1,4 +1,4 @@
-<a href="#"><img width="100%" height="auto" src="https://github.com/hariprasad-ms/Realtime-Gender-Detection/blob/main/Assets/GitWall.png" height="175px"/></a>
+<a href="#"><img width="100%" height="auto" src="https://github.com/hariprasad-ms/Realtime-Mask-Detection/blob/main/Assets/GitWall.png" height="175px"/></a>
 
 <p align="center">
     <img alt="Build" src="https://img.shields.io/badge/build-passed-success">
