@@ -7,24 +7,23 @@
     <img alt="Status" src="https://img.shields.io/badge/progress-integrating-important">
 </p>
 
-# Real-Time Gender Detection Using Python And Deep Learning (cv2)
+# Real-Time Mask Detection Using Python And Deep Learning (cv2)
 
-`This repository contains the my research project reguarding gender detection as an aspect for the development of Destiny, as well as for Personal Knowledge.`
+`This repository contains the my research project reguarding mask detection as an aspect for the new feature development of Destiny, as well as for Personal Knowledge.`
 
 ---
 
-This project is made using a deep learning-based model for face and gender detection provided by the cvlib 
-library.
-Specifically, the cvlib library is built on top of OpenCV and uses pre-trained deep learning models for object
-detection tasks like face detection and gender detection.
+This project is an example of Deep Learning, specifically Convolutional Neural Networks (CNNs). Here we uses a pre-trained CNN model to perform face mask detection on live video feed from a camera.
+
+CNNs are a type of neural network that are commonly used for image classification tasks, and they have been proven to be highly effective in many computer vision applications. The CNN model used in this project has been trained on a large dataset of images to recognize faces with and without masks, and it is used to make predictions on new images in real-time.
 
 ---
 
 ## Working
 
-The project contains a Python script that performs real-time gender detection using the computer vision libraries OpenCV and cvlib.
+The project contains a Python script that uses Keras and OpenCV libraries to perform face mask detection on live camera feed using a pre-trained convolutional neural network (CNN). The script can be divided into several sections as follows:
 
-First, it imports the necessary libraries, `including cvlib, cv2, and numpy.`
+<br />
 
 > **Install The Prerequisite**
 
@@ -35,17 +34,115 @@ pip install opencv-python
 
 ```
 
-It then initializes the webcam object by calling `cv2.VideoCapture(0)`, which sets the default camera device as the video source. It also sets the padding value to 20, which is used later to add a padding around the detected face region to ensure that the entire face is captured in the frame.
+**Pip Command to install tensorflow**
 
-Next, the script enters a while loop that reads each frame from the video feed using the `webcam.read()` method. For each frame, the `cv.detect_face()` method of the cvlib library is called to detect any faces in the frame. If a face is detected, the code draws a green rectangle around the face using the `cv2.rectangle()` method of OpenCV.
+```bash
+pip install tensorflow
 
-Then, the script crops the detected face region using the `np.copy()` method and the coordinates of the rectangle that were detected. It then passes this cropped face region to the `cv.detect_gender()` method of the cvlib library to predict the gender of the person in the face. The method returns two lists: label and confidence, which contain the predicted gender labels and the confidence scores, respectively.
+```
 
-The code then selects the gender label with the highest confidence score using the `np.argmax()` function. It constructs a string label using the predicted gender label and the confidence score, and adds this label to the frame using the `cv2.putText()` method.
+<br />
 
-Finally, the code displays the processed frame using the `cv2.imshow()` method and waits for the user to press the "s" key to stop the program. If the "s" key is pressed, the program releases the camera using the `webcam.release()` method and destroys all windows created by OpenCV using the `cv2.destroyAllWindows()` method.
+> **Importing Required Libraries**
 
-Overall, this code uses computer vision libraries to perform real-time gender detection from a video feed, and demonstrates how these libraries can be used to analyze and process video data in real-time.
+```python
+
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dropout, Dense
+
+    import cv2
+    import numpy as np
+
+```
+
+This section imports the required libraries for the script, including TensorFlow and Keras libraries for building and training the CNN model, OpenCV for image processing, and NumPy for numerical computations.
+
+<br />
+
+> **Building and Compiling CNN Model**
+
+```python
+
+    cnn = Sequential([Conv2D(filters=100, kernel_size=(3,3), activation='relu'),
+                       MaxPooling2D(pool_size=(2,2)),
+                       Conv2D(filters=100, kernel_size=(3,3), activation='relu'),
+                       MaxPooling2D(pool_size=(2,2)),
+                       Flatten(),
+                       Dropout(0.5),
+                       Dense(50),
+                       Dense(35),
+                       Dense(2)])
+    cnn.compile(optimizer='adam', loss='binary_crossentropy', metrics=['acc'])
+
+
+```
+This section defines the CNN model architecture and compiles the model. The model consists of two convolutional layers, two max-pooling layers, a flatten layer, three dense layers, and a dropout layer. The model is compiled with the Adam optimizer, binary cross-entropy loss function, and accuracy as the evaluation metric.
+
+<br />
+
+> **Defining Labels and Colors for Visualization**
+
+```python
+
+    labels_dict={0:'No mask', 1:'Mask'}
+    color_dict={0:(0,0,255), 1:(0,255,0)}
+
+
+```
+
+This section defines a dictionary for the labels of the output classes and a dictionary for the colors of the bounding boxes and text overlays.
+
+<br />
+
+> **Initializing Camera and Face Detection Classifier**
+
+
+```python
+
+    imgsize = 4 #set image resize
+    camera = cv2.VideoCapture(0) # Turn on camera
+    # Identify frontal face
+    classifier = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+```
+This section sets the image resize factor, initializes the camera, and loads the face detection classifier for detecting the faces in the live video feed.
+
+<br />
+
+> **Processing Video Feed and Performing Face Mask Detection**
+
+```python
+
+    while True:
+        (rval, im) = camera.read()
+        im=cv2.flip(im,1,1) #mirrow the image
+        imgs = cv2.resize(im, (im.shape[1] // imgsize, im.shape[0] // imgsize))
+        face_rec = classifier.detectMultiScale(imgs) 
+        for i in face_rec: # Overlay rectangle on face
+            (x, y, l, w) = [v * imgsize for v in i] 
+            face_img = im[y:y+w, x:x+l]
+            resized=cv2.resize(face_img,(150,150))
+            normalized=resized/255.0
+            reshaped=np.reshape(normalized,(1,150,150,3))
+            reshaped = np.vstack([reshaped])
+            result=cnn.predict(reshaped)
+            label=np.argmax(result,axis=1)[0]
+            cv2.rectangle(im,(x,y),(x+l,y+w),color_dict[label],2)
+            cv2.rectangle(im,(x,y-40),(x+l,y),color_dict[label],-1)
+            cv2.putText(im, labels_dict[label], (x, y-10),cv2.FONT_HERSHEY_SIMPLEX,0.8,(255,255,255),2)
+        cv2.imshow('LIVE',im)
+        key = cv2.waitKey(10)
+        # stop loop by ESC
+        if key == 27: # The Esc key
+            break
+```
+
+This section of the code processes the live video feed and performs face mask detection using the pre-trained CNN model. It consists of a while loop that runs continuously until the user terminates the program by pressing the Esc key.
+
+Within the while loop, the code reads a frame from the camera, resizes the image to a smaller size, and applies the face detection classifier to detect the faces in the image. For each detected face, the code extracts the face region, resizes it to 150x150, normalizes the pixel values, and feeds it to the CNN model for prediction.
+
+After obtaining the prediction from the model, the code overlays a rectangle around the detected face and displays the predicted class label on top of the rectangle. The label can be "Mask" or "No mask" depending on whether the model predicts that the face is wearing a mask or not. The code also uses different colors for the rectangle and the text based on the predicted label.
+
+The output of the face mask detection process is displayed in real-time using the `cv2.imshow()` function, which shows the processed image with the detected faces and predicted labels overlaid. Finally, the code waits for 10 milliseconds for a key press event, and if the key pressed is the Esc key, the program is terminated using the `cv2.destroyAllWindows()` function.
 
 ---
 
@@ -55,7 +152,7 @@ Overall, this code uses computer vision libraries to perform real-time gender de
     <hr></hr>
     <a><img width="100%" height="auto" src="https://github.com/hariprasad-ms/Realtime-Mask-Detection/blob/main/Result/YesMask.png" height="175px"/></a>
     <details><summary>Read more...</summary></br>
-    <p>It is hereby shown that the model was able to sucessfully predict if iam a male or female. The percentage value visible is the confidence of prediction.<hr></hr></p></details>
+    <p>It is hereby shown that the model was able to sucessfully predict that there is mask on my face.<hr></hr></p></details>
     
 <br />
 
@@ -63,7 +160,7 @@ Overall, this code uses computer vision libraries to perform real-time gender de
     <hr></hr>
     <a><img width="100%" height="auto" src="https://github.com/hariprasad-ms/Realtime-Mask-Detection/blob/main/Result/NoMask.png" height="175px"/></a>
     <details><summary>Read more...</summary></br>
-    <p>It is hereby shown that the model was able to sucessfully predict if iam a male or female. The percentage value visible is the confidence of prediction.<hr></hr></p></details>
+    <p>It is hereby shown that the model was able to sucessfully predict that there is no mask on my face<hr></hr></p></details>
 
 ---
 
